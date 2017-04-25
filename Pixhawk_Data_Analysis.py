@@ -33,12 +33,15 @@ def ComputeDragLift(IMU_AccX,IMU_AccY,IMU_AccZ, ADAT_u, ADAT_v, ADAT_w,roll, pit
         vel_mag = 1.0
 
     v_dir = vel/vel_mag
-    #drag*v + thrust*v + gravity *v = F_tot*v
-    drag = (np.dot(F_tot,v_dir)   - np.dot(thrust,v_dir) )* v_dir # - np.dot(gravity,v_dir)
+    l_dir = np.cross(v_dir, [0,1,0])
+    l_dir /= np.linalg.norm(l_dir)
 
-    lift = F_tot  - thrust - drag # - gravity
+    #drag + thrust + lift  = F_tot
+    drag = (np.dot(F_tot,v_dir)   - np.dot(thrust,v_dir) )* v_dir  #- np.dot(gravity,v_dir)
 
-    drag_mag,lift_mag = np.linalg.norm(drag), np.linalg.norm(lift)
+    lift_mag = np.dot(F_tot  - thrust - drag, l_dir)  # - gravity
+
+    drag_mag = np.linalg.norm(drag)
 
     ref = 0.5*rho* vel_mag**2*S
 
@@ -55,6 +58,14 @@ def ComputeAOA(ADAT_u, ADAT_v, ADAT_w):
 
     return alpha
 
+def Angle(roll, pitch, yaw):
+    plt.figure(-1)
+    plt.plot(roll,label = "roll")
+    plt.plot(pitch,label = "pitch")
+    plt.plot(yaw,label = "yaw")
+    plt.legend()
+    plt.xlabel('time')
+    plt.ylabel('angle')
 
 def PositionVisualization(ADAT_N, ADAT_E, ADAT_D):
     plt.figure(1)
@@ -117,8 +128,35 @@ def AccVisualization(time,IMU_AccX,IMU_AccY,IMU_AccZ):
     plt.xlabel('time')
     plt.ylabel('ACC')
 
+'''
+def get_max_DL(lift, drag, throttle, V, e=0.85, b=1.55,S=1.55*(0.21+0.18)/2., rho=1.1455 ):
+        Cd0=np.zeros((lift.shape[0],1))
+        for i in range(lift.shape[0]):
+            if Filter_off[i]:
+                vel=V[i]
+                Cd=2*drag[i]/(rho*vel**2.)
+                Cl=2*lift[i]/(rho*vel**2.)
+                Cd0[i]=Cd-Cl**2./(np.pi*S*e)
 
+        Cd0_avg=np.sum(Cd0)/np.count_nonzero(Cd0)
+        DL_max=.5*np.sqrt(np.pi*b**2./S/Cd0_avg)
+        return DL_max
 
+def PowerConsumption(Batt_VFilt,Batt_CFilt):
+    power=np.zeros((len,1))
+    for i in range(len-1):
+        if Filter_off[i]:
+            power[i]=Batt_VFilt[i]*Batt_CFilt[i]-Batt_VFilt[i+1]*Batt_CFilt[i+1];
+    idx=np.nonzero(power)
+    vel=V[idx]
+    cons=power[idx]
+    cons=cons(np.argsort(vel))
+    vel=sort(vel)
+    plt.plot(vel, cons, 'bo')
+    plt.title('level_flight power consumption')
+    plt.xlabel('velocity')
+    plt.ylabel('power consumption')
+'''
 
 if __name__  == "__main__":
 
@@ -133,7 +171,7 @@ if __name__  == "__main__":
     S=b*(0.21+0.18)/2. #m^2 rough approx!!
 
     ############################################
-    log = np.genfromtxt('Data/log_5.csv', delimiter=",",filling_values = 0.0, skip_header=6)
+    log = np.genfromtxt('../Data/log_5.csv', delimiter=",",filling_values = 0.0, skip_header=6)
 
     #Filter out the data before start off and after landing, bases on velocity bar
     ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
@@ -162,7 +200,7 @@ if __name__  == "__main__":
     #python start from 0
     roll,pitch,yaw = log[:,4],log[:,5],log[:,6]
 
-    IMU_AccX,IMU_AccY,IMU_AccZ = log[:,18],log[:,19],log[:,20]
+    IMU_AccX,IMU_AccY,IMU_AccZ = log[:,18],log[:,19],-log[:,20]
 
     ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
 
@@ -184,7 +222,7 @@ if __name__  == "__main__":
     print(ADAT_u[0], ADAT_v[0], ADAT_w[0])
     print(RC_C0[0], RC_C1[0], RC_C2[0],RC_C3[0],  BATT_V[0], BATT_C[0],TIME_StartTime[0])
     '''
-
+    Angle(roll, pitch, yaw)
     PositionVisualization(ADAT_N, ADAT_E, ADAT_Dgps)
     ChannelVisualization(TIME_StartTime, RC_C0, RC_C1, RC_C2,RC_C3)
     BodyVelocityVisualization(TIME_StartTime,ADAT_u, ADAT_v, ADAT_w)
@@ -204,21 +242,26 @@ if __name__  == "__main__":
         alpha[i] = ComputeAOA(ADAT_u[i], ADAT_v[i], ADAT_w[i])
 
     ############## Filter
-    CH_throttle_off = RC_C2 < 1e-8
+    Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(len)]
+
+
+
+    #Filter_acc=[np.linalg.norm(np.array([IMU_AccX,IMU_AccY,IMU_AccZ]))< 10 for i in range(len)]
+
+
 
     plt.figure(100)
-    plt.plot(CH_throttle_off)
-    plt.legend()
+    plt.plot(Filter_off)
     plt.title('All data')
     plt.xlabel('time')
     plt.ylabel('CH_throttle_off')
 
 
-    drag_throttle_off = [drag[i] for i in range(len) if CH_throttle_off[i]]
-    lift_throttle_off = [lift[i] for i in range(len) if CH_throttle_off[i]]
-    c_drag_throttle_off = [c_drag[i] for i in range(len) if CH_throttle_off[i]]
-    c_lift_throttle_off = [c_lift[i] for i in range(len) if CH_throttle_off[i]]
-    alpha_throttle_off = [alpha[i] for i in range(len) if CH_throttle_off[i]]
+    drag_throttle_off = [drag[i] for i in range(len) if Filter_off[i]]
+    lift_throttle_off = [lift[i] for i in range(len) if Filter_off[i]]
+    c_drag_throttle_off = [c_drag[i] for i in range(len) if Filter_off[i]]
+    c_lift_throttle_off = [c_lift[i] for i in range(len) if Filter_off[i]]
+    alpha_throttle_off = [alpha[i] for i in range(len) if Filter_off[i]]
 
 
     plt.figure(10)

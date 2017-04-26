@@ -359,6 +359,12 @@ if __name__  == "__main__":
     plt.ylabel('drag coeff')
     plt.title('Throttle off')
 
+    plt.figure(14)
+    plt.plot(alpha_filtered,np.array(c_lift_filtered)/np.array(c_drag_filtered),'ro',markersize=2)
+    plt.xlabel('alpha')
+    plt.ylabel('CL/CD')
+    plt.title('Throttle off')
+
 
     plt.show()
 

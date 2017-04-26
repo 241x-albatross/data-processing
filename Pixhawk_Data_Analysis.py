@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+from itertools import compress
 def LoadCompressedData():
 
     log = np.load('log_5_compressed.npy')
@@ -112,58 +112,83 @@ def ComputeAOA(ADAT_u, ADAT_v, ADAT_w):
     return alpha
 
 def Angle(roll, pitch, yaw, filter = None):
+    if(filter is not None):
+        roll = list(compress(roll, filter))
+        pitch = list(compress(pitch, filter))
+        yaw = list(compress(yaw, filter))
+
     plt.figure(-1)
-    plt.plot(roll,label = "roll")
-    plt.plot(pitch,label = "pitch")
-    plt.plot(yaw,label = "yaw")
+    plt.plot(roll,'-o',label = "roll",markersize=2)
+    plt.plot(pitch,'-o',label = "pitch",markersize=2)
+    plt.plot(yaw,'-o',label = "yaw",markersize=2)
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('angle')
 
 def PositionVisualization(ADAT_N, ADAT_E, ADAT_D,filter = None):
+    if(filter is not None):
+        ADAT_N = list(compress(ADAT_N, filter))
+        ADAT_E = list(compress(ADAT_E, filter))
+        ADAT_D = list(compress(ADAT_D, filter))
+
+
     plt.figure(1)
-    plt.plot(ADAT_D)
+    plt.plot(ADAT_D,'-o',markersize=2)
     plt.xlabel('time')
     plt.ylabel('altitude')
 
     plt.figure(2)
-    plt.plot(ADAT_N,ADAT_E)
+    plt.plot(ADAT_N,ADAT_E,'-o',markersize=2)
     plt.xlabel('N')
     plt.ylabel('E')
 
 
 def ChannelVisualization(time, CH0,CH1,CH2,CH3,filter = None):
+    if(filter is not None):
+        CH0 = list(compress(CH0, filter))
+        CH1 = list(compress(CH1, filter))
+        CH2 = list(compress(CH2, filter))
+        CH3 = list(compress(CH3, filter))
+        time = list(compress(time, filter))
+
     plt.figure(3)
-    plt.plot(time,CH0,label ="aileron")
-    plt.plot(time,CH1,label ="elevator")
-    plt.plot(time,CH2,label ="throttle")
-    plt.plot(time,CH3,label ="rudder")
+    plt.plot(time,CH0,label ="aileron",markersize=2)
+    plt.plot(time,CH1,label ="elevator",markersize=2)
+    plt.plot(time,CH2,label ="throttle",markersize=2)
+    plt.plot(time,CH3,label ="rudder",markersize=2)
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('signal')
 
 def NEDVelocityVisualization(time,GPS_VelN,GPS_VelE,GPS_VelD,filter = None):
     plt.figure(4)
-    plt.plot(time,GPS_VelN,label ="VelN")
-    plt.plot(time,GPS_VelE,label ="VelE")
-    plt.plot(time,GPS_VelD,label ="VelD")
+    plt.plot(time,GPS_VelN,label ="VelN",markersize=2)
+    plt.plot(time,GPS_VelE,label ="VelE",markersize=2)
+    plt.plot(time,GPS_VelD,label ="VelD",markersize=2)
 
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('velocity')
 
 def BodyVelocityVisualization(time,Vx,Vy,Vz,filter = None):
+    if(filter is not None):
+        Vx = np.array(list(compress(Vx, filter)))
+        Vy = np.array(list(compress(Vy, filter)))
+        Vz = np.array(list(compress(Vz, filter)))
+        time = np.array(list(compress(time, filter)))
+
+
     plt.figure(4)
-    plt.plot(time,Vx,label ="Vx")
-    plt.plot(time,Vy,label ="Vy")
-    plt.plot(time,Vz,label ="Vz")
+    plt.plot(time,Vx,'-o',label ="Vx",markersize=2)
+    plt.plot(time,Vy,'-o',label ="Vy",markersize=2)
+    plt.plot(time,Vz,'-o',label ="Vz",markersize=2)
 
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('velocity')
 
     plt.figure(5)
-    plt.plot(time,np.sqrt(Vx**2+Vy**2+Vz**2),label ="|V|")
+    plt.plot(time, np.sqrt(Vx**2+Vy**2+Vz**2),'-o',label ="|V|",markersize=2)
 
 
     plt.legend()
@@ -172,10 +197,16 @@ def BodyVelocityVisualization(time,Vx,Vy,Vz,filter = None):
 
 
 def AccVisualization(time,IMU_AccX,IMU_AccY,IMU_AccZ,filter = None):
+    if(filter is not None):
+        IMU_AccX = list(compress(IMU_AccX, filter))
+        IMU_AccY = list(compress(IMU_AccY, filter))
+        IMU_AccZ = list(compress(IMU_AccZ, filter))
+        time = list(compress(time, filter))
+
     plt.figure(6)
-    plt.plot(time,IMU_AccX,label ="IMU_AccX")
-    plt.plot(time,IMU_AccY,label ="IMU_AccY")
-    plt.plot(time,IMU_AccZ,label ="IMU_AccZ")
+    plt.plot(time,IMU_AccX,'-o',label ="IMU_AccX",markersize=2)
+    plt.plot(time,IMU_AccY,'-o',label ="IMU_AccY",markersize=2)
+    plt.plot(time,IMU_AccZ,'-o',label ="IMU_AccZ",markersize=2)
 
     plt.legend()
     plt.xlabel('time')
@@ -202,14 +233,14 @@ def PowerConsumption(Batt_VFilt,Batt_CFilt,Vx,Vy,Vz,Filter_off):
     V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
 
     plt.figure(7)
-    plt.plot(V, power, 'bo')
+    plt.plot(V, power, 'bo',markersize=2)
     plt.title('power consumption')
     plt.xlabel('velocity')
     plt.ylabel('power')
 
     plt.figure(8)
     power = power*Filter_off
-    plt.plot(V, power, 'bo')
+    plt.plot(V, power,'bo',markersize=2)
     plt.title('throttle-off level flight power')
     plt.xlabel('velocity')
     plt.ylabel('power')
@@ -234,17 +265,24 @@ if __name__  == "__main__":
     print(ADAT_u[0], ADAT_v[0], ADAT_w[0])
     print(RC_C0[0], RC_C1[0], RC_C2[0],RC_C3[0],  BATT_V[0], BATT_C[0],TIME_StartTime[0])
     '''
-    Angle(roll, pitch, yaw)
-    PositionVisualization(ADAT_N, ADAT_E, ADAT_Dgps)
-    ChannelVisualization(TIME_StartTime, RC_C0, RC_C1, RC_C2,RC_C3)
-    BodyVelocityVisualization(TIME_StartTime,ADAT_u, ADAT_v, ADAT_w)
-    AccVisualization(TIME_StartTime,IMU_AccX,IMU_AccY,IMU_AccZ)
 
-
-
-
-
+    ############## Filter
     len = len(roll)
+
+    Filter_off = [(RC_C2[i] < 1e-5)  for i in range(len)]
+
+
+    Angle(roll, pitch, yaw,Filter_off)
+    PositionVisualization(ADAT_N, ADAT_E, ADAT_Dgps,Filter_off)
+    ChannelVisualization(TIME_StartTime, RC_C0, RC_C1, RC_C2,RC_C3,Filter_off)
+    BodyVelocityVisualization(TIME_StartTime,ADAT_u, ADAT_v, ADAT_w,Filter_off)
+    AccVisualization(TIME_StartTime,IMU_AccX,IMU_AccY,IMU_AccZ,Filter_off)
+
+
+
+
+
+
     drag,lift,c_drag,c_lift,alpha = np.zeros(len),np.zeros(len),np.zeros(len),np.zeros(len),np.zeros(len)
     for i in range(len):
         drag[i], lift[i], c_drag[i],c_lift[i] = ComputeDragLift(IMU_AccX[i],IMU_AccY[i],IMU_AccZ[i],
@@ -253,8 +291,7 @@ if __name__  == "__main__":
                                                                 g,mass,rho,S)
         alpha[i] = ComputeAOA(ADAT_u[i], ADAT_v[i], ADAT_w[i])
 
-    ############## Filter
-    Filter_off = [(RC_C2[i] < 1e-5)  for i in range(len)]
+
 
 
     #Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(len)]
@@ -266,7 +303,7 @@ if __name__  == "__main__":
 
 
     plt.figure(100)
-    plt.plot(Filter_off)
+    plt.plot(Filter_off,markersize=2)
     plt.title('All data')
     plt.xlabel('time')
     plt.ylabel('Filter_off')
@@ -282,23 +319,23 @@ if __name__  == "__main__":
 
 
     plt.figure(10)
-    plt.plot(alpha_filtered,lift_filtered,'ro')
+    plt.plot(alpha_filtered,lift_filtered,'ro',markersize=2)
     plt.xlabel('alpha')
     plt.ylabel('lift')
     plt.title('Throttle off')
     plt.figure(11)
-    plt.plot(alpha_filtered,drag_filtered,'ro')
+    plt.plot(alpha_filtered,drag_filtered,'ro',markersize=2)
     plt.xlabel('alpha')
     plt.ylabel('drag')
     plt.title('Throttle off')
 
     plt.figure(12)
-    plt.plot(alpha_filtered,c_lift_filtered,'ro')
+    plt.plot(alpha_filtered,c_lift_filtered,'ro',markersize=2)
     plt.xlabel('alpha')
     plt.ylabel('lift coeff')
     plt.title('Throttle off')
     plt.figure(13)
-    plt.plot(alpha_filtered,c_drag_filtered,'ro')
+    plt.plot(alpha_filtered,c_drag_filtered,'ro',markersize=2)
     plt.xlabel('alpha')
     plt.ylabel('drag coeff')
     plt.title('Throttle off')

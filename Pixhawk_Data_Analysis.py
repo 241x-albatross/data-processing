@@ -111,34 +111,36 @@ def ComputeAOA(ADAT_u, ADAT_v, ADAT_w):
 
     return alpha
 
-def Angle(roll, pitch, yaw, filter = None):
+def Angle(time, roll, pitch, yaw, filter = None):
     if(filter is not None):
         roll = list(compress(roll, filter))
         pitch = list(compress(pitch, filter))
         yaw = list(compress(yaw, filter))
+        time = list(compress(time, filter))
 
     plt.figure(-1)
-    plt.plot(roll,'-o',label = "roll",markersize=2)
-    plt.plot(pitch,'-o',label = "pitch",markersize=2)
-    plt.plot(yaw,'-o',label = "yaw",markersize=2)
+    plt.plot(time,roll,'o',label = "roll",markersize=2)
+    plt.plot(time, pitch,'o',label = "pitch",markersize=2)
+    plt.plot(time, yaw,'o',label = "yaw",markersize=2)
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('angle')
 
-def PositionVisualization(ADAT_N, ADAT_E, ADAT_D,filter = None):
+def PositionVisualization(time, ADAT_N, ADAT_E, ADAT_D,filter = None):
     if(filter is not None):
         ADAT_N = list(compress(ADAT_N, filter))
         ADAT_E = list(compress(ADAT_E, filter))
         ADAT_D = list(compress(ADAT_D, filter))
+        time = list(compress(time, filter))
 
 
     plt.figure(1)
-    plt.plot(ADAT_D,'-o',markersize=2)
+    plt.plot(time, ADAT_D,'o',markersize=2)
     plt.xlabel('time')
     plt.ylabel('altitude')
 
     plt.figure(2)
-    plt.plot(ADAT_N,ADAT_E,'-o',markersize=2)
+    plt.plot(ADAT_N,ADAT_E,'o',markersize=2)
     plt.xlabel('N')
     plt.ylabel('E')
 
@@ -152,10 +154,10 @@ def ChannelVisualization(time, CH0,CH1,CH2,CH3,filter = None):
         time = list(compress(time, filter))
 
     plt.figure(3)
-    plt.plot(time,CH0,label ="aileron",markersize=2)
-    plt.plot(time,CH1,label ="elevator",markersize=2)
-    plt.plot(time,CH2,label ="throttle",markersize=2)
-    plt.plot(time,CH3,label ="rudder",markersize=2)
+    plt.plot(time,CH0,'-o',label ="aileron",markersize=2)
+    plt.plot(time,CH1,'-o',label ="elevator",markersize=2)
+    plt.plot(time,CH2,'-o',label ="throttle",markersize=2)
+    plt.plot(time,CH3,'-o',label ="rudder",markersize=2)
     plt.legend()
     plt.xlabel('time')
     plt.ylabel('signal')
@@ -179,9 +181,9 @@ def BodyVelocityVisualization(time,Vx,Vy,Vz,filter = None):
 
 
     plt.figure(4)
-    plt.plot(time,Vx,'-o',label ="Vx",markersize=2)
-    plt.plot(time,Vy,'-o',label ="Vy",markersize=2)
-    plt.plot(time,Vz,'-o',label ="Vz",markersize=2)
+    plt.plot(time,Vx,'o',label ="Vx",markersize=2)
+    plt.plot(time,Vy,'o',label ="Vy",markersize=2)
+    plt.plot(time,Vz,'o',label ="Vz",markersize=2)
 
     plt.legend()
     plt.xlabel('time')
@@ -267,13 +269,13 @@ if __name__  == "__main__":
     '''
 
     ############## Filter
-    len = len(roll)
+    data_len = len(roll)
 
-    Filter_off = [(RC_C2[i] < 1e-5)  for i in range(len)]
+    Filter_off = [(RC_C2[i] < 1e-5)  for i in range(data_len)]
 
 
-    Angle(roll, pitch, yaw,Filter_off)
-    PositionVisualization(ADAT_N, ADAT_E, ADAT_Dgps,Filter_off)
+    Angle(TIME_StartTime, roll, pitch, yaw,Filter_off)
+    PositionVisualization(TIME_StartTime,ADAT_N, ADAT_E, ADAT_Dgps,Filter_off)
     ChannelVisualization(TIME_StartTime, RC_C0, RC_C1, RC_C2,RC_C3,Filter_off)
     BodyVelocityVisualization(TIME_StartTime,ADAT_u, ADAT_v, ADAT_w,Filter_off)
     AccVisualization(TIME_StartTime,IMU_AccX,IMU_AccY,IMU_AccZ,Filter_off)
@@ -283,8 +285,8 @@ if __name__  == "__main__":
 
 
 
-    drag,lift,c_drag,c_lift,alpha = np.zeros(len),np.zeros(len),np.zeros(len),np.zeros(len),np.zeros(len)
-    for i in range(len):
+    drag,lift,c_drag,c_lift,alpha = np.zeros(data_len),np.zeros(data_len),np.zeros(data_len),np.zeros(data_len),np.zeros(data_len)
+    for i in range(data_len):
         drag[i], lift[i], c_drag[i],c_lift[i] = ComputeDragLift(IMU_AccX[i],IMU_AccY[i],IMU_AccZ[i],
                                                                 ADAT_u[i], ADAT_v[i], ADAT_w[i],
                                                                 roll[i],pitch[i],yaw[i],
@@ -294,11 +296,11 @@ if __name__  == "__main__":
 
 
 
-    #Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(len)]
+    #Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(data_len)]
 
 
 
-    #Filter_acc=[np.linalg.norm(np.array([IMU_AccX,IMU_AccY,IMU_AccZ]))< 10 for i in range(len)]
+    #Filter_acc=[np.linalg.norm(np.array([IMU_AccX,IMU_AccY,IMU_AccZ]))< 10 for i in range(data_len)]
 
 
 
@@ -311,11 +313,28 @@ if __name__  == "__main__":
     PowerConsumption(BATT_V, BATT_C, ADAT_u, ADAT_v, ADAT_w,Filter_off)
 
 
-    drag_filtered = [drag[i] for i in range(len) if Filter_off[i]]
-    lift_filtered = [lift[i] for i in range(len) if Filter_off[i]]
-    c_drag_filtered = [c_drag[i] for i in range(len) if Filter_off[i]]
-    c_lift_filtered = [c_lift[i] for i in range(len) if Filter_off[i]]
-    alpha_filtered = [alpha[i] for i in range(len) if Filter_off[i]]
+    #Filter_off value is true for n1 n1+1 .. n1+k1, n2 n2+1... n2+k2 .....
+    #we need to find ni and ki
+
+    Filter_segments = [i for i in range(data_len) if Filter_off[i] and ((i==0 or not Filter_off[i-1]) or ((i==data_len-1) or not Filter_off[i+1]))]
+
+
+
+    print(len(Filter_segments)//2, Filter_segments)
+    seg_id = 6
+    if seg_id >0:
+        filter_start_id = Filter_segments[2*seg_id-2]
+        filter_end_id = Filter_segments[2 * seg_id - 1]+1
+    else:
+        filter_start_id = 0
+        filter_end_id = data_len
+
+
+    drag_filtered = [drag[i] for i in np.arange(filter_start_id,filter_end_id) if Filter_off[i]]
+    lift_filtered = [lift[i] for i in np.arange(filter_start_id,filter_end_id) if Filter_off[i]]
+    c_drag_filtered = [c_drag[i] for i in np.arange(filter_start_id,filter_end_id) if Filter_off[i]]
+    c_lift_filtered = [c_lift[i] for i in np.arange(filter_start_id,filter_end_id) if Filter_off[i]]
+    alpha_filtered = [alpha[i] for i in np.arange(filter_start_id,filter_end_id) if Filter_off[i]]
 
 
     plt.figure(10)

@@ -2,6 +2,59 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+def LoadCompressedData():
+
+    log = np.load('log_5_compressed.npy')
+
+    return log.T #becasue we need its columns
+
+
+def LoadRawData(file_name):
+
+    ############################################
+    log = np.genfromtxt(file_name, delimiter=",",filling_values = 0.0, skip_header=6)
+
+    #Filter out the data before start off and after landing, bases on velocity bar
+    ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
+
+    V = np.sqrt(ADAT_u**2 + ADAT_v**2 +  ADAT_w**2)
+
+    plt.figure(0)
+    plt.plot(V,label ="|V|")
+    plt.legend()
+    plt.title('All data')
+    plt.xlabel('time')
+    plt.ylabel('velocity')
+
+    vel_bar = 3.0
+
+    V_ind = np.where(V > vel_bar)[0]
+
+    idx_begin, idx_end = min(V_ind), max(V_ind)
+    print(len(V))
+    print(idx_begin, idx_end)
+
+    log = log[idx_begin:idx_end+1,:]
+
+    #python start from 0
+    roll,pitch,yaw = log[:,4],log[:,5],log[:,6]
+
+    IMU_AccX,IMU_AccY,IMU_AccZ = log[:,18],log[:,19],log[:,20]
+
+    RC_C0, RC_C1, RC_C2,RC_C3 = log[:,116],log[:,117],log[:,118], log[:,119]
+
+    BATT_V, BATT_C = log[:,178],log[:,179]
+
+    ADAT_N, ADAT_E, ADAT_Dbaro,ADAT_Dgps = log[:,454],log[:,455],log[:,456],log[:,457]
+
+    ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
+
+    TIME_StartTime = log[:,462]
+
+    return roll,pitch,yaw,IMU_AccX,IMU_AccY,IMU_AccZ,RC_C0, RC_C1, RC_C2,RC_C3,BATT_V, BATT_C,\
+           ADAT_N, ADAT_E, ADAT_Dbaro,ADAT_Dgps,ADAT_u, ADAT_v, ADAT_w,TIME_StartTime
+
 def RotatioMatrix(roll,pitch,yaw):
     '''
     compute rotation matrix, R, project from NED to body framework
@@ -58,7 +111,7 @@ def ComputeAOA(ADAT_u, ADAT_v, ADAT_w):
 
     return alpha
 
-def Angle(roll, pitch, yaw):
+def Angle(roll, pitch, yaw, filter = None):
     plt.figure(-1)
     plt.plot(roll,label = "roll")
     plt.plot(pitch,label = "pitch")
@@ -67,7 +120,7 @@ def Angle(roll, pitch, yaw):
     plt.xlabel('time')
     plt.ylabel('angle')
 
-def PositionVisualization(ADAT_N, ADAT_E, ADAT_D):
+def PositionVisualization(ADAT_N, ADAT_E, ADAT_D,filter = None):
     plt.figure(1)
     plt.plot(ADAT_D)
     plt.xlabel('time')
@@ -79,7 +132,7 @@ def PositionVisualization(ADAT_N, ADAT_E, ADAT_D):
     plt.ylabel('E')
 
 
-def ChannelVisualization(time, CH0,CH1,CH2,CH3):
+def ChannelVisualization(time, CH0,CH1,CH2,CH3,filter = None):
     plt.figure(3)
     plt.plot(time,CH0,label ="aileron")
     plt.plot(time,CH1,label ="elevator")
@@ -89,7 +142,7 @@ def ChannelVisualization(time, CH0,CH1,CH2,CH3):
     plt.xlabel('time')
     plt.ylabel('signal')
 
-def NEDVelocityVisualization(time,GPS_VelN,GPS_VelE,GPS_VelD):
+def NEDVelocityVisualization(time,GPS_VelN,GPS_VelE,GPS_VelD,filter = None):
     plt.figure(4)
     plt.plot(time,GPS_VelN,label ="VelN")
     plt.plot(time,GPS_VelE,label ="VelE")
@@ -99,7 +152,7 @@ def NEDVelocityVisualization(time,GPS_VelN,GPS_VelE,GPS_VelD):
     plt.xlabel('time')
     plt.ylabel('velocity')
 
-def BodyVelocityVisualization(time,Vx,Vy,Vz):
+def BodyVelocityVisualization(time,Vx,Vy,Vz,filter = None):
     plt.figure(4)
     plt.plot(time,Vx,label ="Vx")
     plt.plot(time,Vy,label ="Vy")
@@ -118,7 +171,7 @@ def BodyVelocityVisualization(time,Vx,Vy,Vz):
     plt.ylabel('velocity')
 
 
-def AccVisualization(time,IMU_AccX,IMU_AccY,IMU_AccZ):
+def AccVisualization(time,IMU_AccX,IMU_AccY,IMU_AccZ,filter = None):
     plt.figure(6)
     plt.plot(time,IMU_AccX,label ="IMU_AccX")
     plt.plot(time,IMU_AccY,label ="IMU_AccY")
@@ -141,80 +194,39 @@ def get_max_DL(lift, drag, throttle, V, e=0.85, b=1.55,S=1.55*(0.21+0.18)/2., rh
         Cd0_avg=np.sum(Cd0)/np.count_nonzero(Cd0)
         DL_max=.5*np.sqrt(np.pi*b**2./S/Cd0_avg)
         return DL_max
-
-def PowerConsumption(Batt_VFilt,Batt_CFilt):
-    power=np.zeros((len,1))
-    for i in range(len-1):
-        if Filter_off[i]:
-            power[i]=Batt_VFilt[i]*Batt_CFilt[i]-Batt_VFilt[i+1]*Batt_CFilt[i+1];
-    idx=np.nonzero(power)
-    vel=V[idx]
-    cons=power[idx]
-    cons=cons(np.argsort(vel))
-    vel=sort(vel)
-    plt.plot(vel, cons, 'bo')
-    plt.title('level_flight power consumption')
-    plt.xlabel('velocity')
-    plt.ylabel('power consumption')
 '''
+def PowerConsumption(Batt_VFilt,Batt_CFilt,Vx,Vy,Vz,Filter_off):
+
+
+    power = Batt_VFilt*Batt_CFilt
+    V = np.sqrt(Vx**2 + Vy**2 + Vz**2)
+
+    plt.figure(7)
+    plt.plot(V, power, 'bo')
+    plt.title('power consumption')
+    plt.xlabel('velocity')
+    plt.ylabel('power')
+
+    plt.figure(8)
+    power = power*Filter_off
+    plt.plot(V, power, 'bo')
+    plt.title('throttle-off level flight power')
+    plt.xlabel('velocity')
+    plt.ylabel('power')
+
 
 if __name__  == "__main__":
 
-
-    """
-    skip_header=5,
-    """
     g = 9.8
     mass = 1.031
     rho=1.1455 #kg.m-3
     b=1.55 #m
     S=b*(0.21+0.18)/2. #m^2 rough approx!!
 
-    ############################################
-    log = np.genfromtxt('../Data/log_5.csv', delimiter=",",filling_values = 0.0, skip_header=6)
+    roll,pitch,yaw,IMU_AccX,IMU_AccY,IMU_AccZ,RC_C0, RC_C1, RC_C2,RC_C3,BATT_V, BATT_C,\
+           ADAT_N, ADAT_E, ADAT_Dbaro,ADAT_Dgps,ADAT_u, ADAT_v, ADAT_w,TIME_StartTime = LoadCompressedData()
 
-    #Filter out the data before start off and after landing, bases on velocity bar
-    ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
-
-    V = np.sqrt(ADAT_u**2 + ADAT_v**2 +  ADAT_w**2)
-
-    plt.figure(0)
-    plt.plot(V,label ="|V|")
-    plt.legend()
-    plt.title('All data')
-    plt.xlabel('time')
-    plt.ylabel('velocity')
-
-
-
-    vel_bar = 3.0
-
-    V_ind = np.where(V > vel_bar)[0]
-
-    idx_begin, idx_end = min(V_ind), max(V_ind)
-    print(len(V))
-    print(idx_begin, idx_end)
-
-    log = log[idx_begin:idx_end+1,:]
-
-    #python start from 0
-    roll,pitch,yaw = log[:,4],log[:,5],log[:,6]
-
-    IMU_AccX,IMU_AccY,IMU_AccZ = log[:,18],log[:,19],-log[:,20]
-
-    ADAT_u, ADAT_v, ADAT_w = log[:,458],log[:,459],log[:,460]
-
-    ADAT_N, ADAT_E, ADAT_Dbaro,ADAT_Dgps = log[:,454],log[:,455],log[:,456],log[:,457]
-
-    RC_C0, RC_C1, RC_C2,RC_C3 = log[:,116],log[:,117],log[:,118], log[:,119]
-
-    BATT_V, BATT_C = log[:,178],log[:,179]
-
-    TIME_StartTime = log[:,462]
-
-
-
-
+    IMU_AccZ = -IMU_AccZ
 
     ##############################################################
     '''
@@ -242,7 +254,10 @@ if __name__  == "__main__":
         alpha[i] = ComputeAOA(ADAT_u[i], ADAT_v[i], ADAT_w[i])
 
     ############## Filter
-    Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(len)]
+    Filter_off = [(RC_C2[i] < 1e-5)  for i in range(len)]
+
+
+    #Filter_off = [(RC_C2[i] < 1e-5) and (np.fabs(roll[i]) < 5*np.pi/180) for i in range(len)]
 
 
 
@@ -254,34 +269,36 @@ if __name__  == "__main__":
     plt.plot(Filter_off)
     plt.title('All data')
     plt.xlabel('time')
-    plt.ylabel('CH_throttle_off')
+    plt.ylabel('Filter_off')
+
+    PowerConsumption(BATT_V, BATT_C, ADAT_u, ADAT_v, ADAT_w,Filter_off)
 
 
-    drag_throttle_off = [drag[i] for i in range(len) if Filter_off[i]]
-    lift_throttle_off = [lift[i] for i in range(len) if Filter_off[i]]
-    c_drag_throttle_off = [c_drag[i] for i in range(len) if Filter_off[i]]
-    c_lift_throttle_off = [c_lift[i] for i in range(len) if Filter_off[i]]
-    alpha_throttle_off = [alpha[i] for i in range(len) if Filter_off[i]]
+    drag_filtered = [drag[i] for i in range(len) if Filter_off[i]]
+    lift_filtered = [lift[i] for i in range(len) if Filter_off[i]]
+    c_drag_filtered = [c_drag[i] for i in range(len) if Filter_off[i]]
+    c_lift_filtered = [c_lift[i] for i in range(len) if Filter_off[i]]
+    alpha_filtered = [alpha[i] for i in range(len) if Filter_off[i]]
 
 
     plt.figure(10)
-    plt.plot(alpha_throttle_off,lift_throttle_off,'ro')
+    plt.plot(alpha_filtered,lift_filtered,'ro')
     plt.xlabel('alpha')
     plt.ylabel('lift')
     plt.title('Throttle off')
     plt.figure(11)
-    plt.plot(alpha_throttle_off,drag_throttle_off,'ro')
+    plt.plot(alpha_filtered,drag_filtered,'ro')
     plt.xlabel('alpha')
     plt.ylabel('drag')
     plt.title('Throttle off')
 
     plt.figure(12)
-    plt.plot(alpha_throttle_off,c_lift_throttle_off,'ro')
+    plt.plot(alpha_filtered,c_lift_filtered,'ro')
     plt.xlabel('alpha')
     plt.ylabel('lift coeff')
     plt.title('Throttle off')
     plt.figure(13)
-    plt.plot(alpha_throttle_off,c_drag_throttle_off,'ro')
+    plt.plot(alpha_filtered,c_drag_filtered,'ro')
     plt.xlabel('alpha')
     plt.ylabel('drag coeff')
     plt.title('Throttle off')
